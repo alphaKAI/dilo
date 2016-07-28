@@ -1,9 +1,9 @@
 /*
- *      Dilo - A minimal text editor in D Language, ported from Kilo.
+ *   Dilo - A minimal Text Editor in D Language, ported from Kilo.
  *
- *                    A tiny text editor - Dilo
+ *                    A minimal Text Editor - Dilo
  *
- *  Dilo is A minimal text Editor in D Language, ported from Kilo.
+ *  Dilo is a minimal text Editor in D Language, ported from Kilo.
  * As original Kilo, currently, doesn't depend on libcurses.
  * Current version of Dilo is meraly ported, but I'll imporove.
  *
