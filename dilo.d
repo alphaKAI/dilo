@@ -287,7 +287,7 @@ int getCursorPosition(int ifd, int ofd, int* rows, int* cols) {
     if (buf[i] == 'R') break;
     i++;
   }
-  buf[i] = '0';
+  buf[i] = '\0';
 
   /* Parse it. */
   if (buf[0] != KEY_ACTION.ESC || buf[1] != '[') return -1;
@@ -343,9 +343,9 @@ bool is_separator(int c) {
 bool editorRowHasOpenComment(Erow* row) {
   if (row.hl && row.rsize && row.hl[row.rsize - 1] == HL.MLCOMMENT &&
       (row.rsize < 2 || (row.render[row.rsize - 2] != '*' ||
-                         row.render[row.rsize - 1] != '/'))) return false;
+                         row.render[row.rsize - 1] != '/'))) return true;
 
-  return true;
+  return false;
 }
 
 /* Set every byte of row.hl (that corresponds to every character in the line)
@@ -394,6 +394,7 @@ void editorUpdateSyntax(Erow* row) {
         row.hl[i + 1] = HL.MLCOMMENT;
         p += 2;
         i += 2;
+        in_comment = false;
         prev_sep = true;
         continue;
       } else {
@@ -468,7 +469,7 @@ void editorUpdateSyntax(Erow* row) {
         bool  kw2  = keywords[j][klen - 1] == '|';
         if (kw2) klen--;
 
-        if (!(p[0..klen] == keywords[j][0..klen]) &&
+        if (!memcmp(p, keywords[j].ptr, klen) &&
             is_separator(*(p + klen))) {
           /* KeyWord */
           memset(row.hl+i, kw2 ? HL.KEYWORD2 : HL.KEYWORD1, klen);
@@ -610,6 +611,7 @@ void editorDelRow(ulong at) {
   E.dirty = true;
 }
 
+/*
 string editorRowsToString() {
   string buf;
 
@@ -620,6 +622,27 @@ string editorRowsToString() {
     buf ~= "\n";
   }
 
+  return buf;
+}*/
+char *editorRowsToString(int *buflen) {
+  char* buf, p;
+  int totlen = 0;
+  int j;
+
+  /* Compute count of bytes */
+  for (; j < E.numrows; j++)
+    totlen += E.row[j].size+1; /* +1 is for "\n" at end of every row */
+  *buflen = totlen;
+  totlen++; /* Also make space for nulterm */
+
+  p = buf = malloc!(char*)(totlen);
+  for (j = 0; j < E.numrows; j++) {
+    memcpy(p,E.row[j].chars,E.row[j].size);
+    p += E.row[j].size;
+    *p = '\n';
+    p++;
+  }
+  *p = '\0';
   return buf;
 }
 
@@ -786,12 +809,14 @@ int editorOpen(string filename) {
 
 /* Save the current file on disk. Return 0 on success, 1 on error. */
 int editorSave() {
-  string buf = editorRowsToString();
+  int len;
+  //string buf = editorRowsToString();
+  char* buf = editorRowsToString(&len);
   auto file = File(E.filename, "w");
 
   file.write(buf);
 
-  editorSetStatusMessage("%d bytes written on disk", buf.length);
+  editorSetStatusMessage("%d bytes written on disk", buf.fromStringz.length);
 
   E.dirty = false;
 
@@ -1002,11 +1027,11 @@ void editorFind(int fd) {
     /* Search occurrence. */
     if (last_match == -1) find_next = 1;
     if (find_next) {
-      char *match = null;
+      char* match;
       long match_offset;
       long i, current = last_match;
 
-      for (i = 0; i < E.numrows; i++) {
+      for (; i < E.numrows; i++) {
         current += find_next;
         if (current == -1) current = E.numrows-1;
         else if (current == E.numrows) current = 0;
@@ -1032,7 +1057,7 @@ void editorFind(int fd) {
       mixin(FIND_RESTORE_HL);
 
       if (match !is null) {
-        Erow *row = &E.row[current];
+        Erow* row  = &E.row[current];
         last_match = current;
         if (row.hl) {
           saved_hl_line = current;
