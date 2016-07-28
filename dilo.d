@@ -206,7 +206,7 @@ enum KEY_ACTION {
   "bar|" <- pattern 2
  */
 
-enum string[] C_HL_extenstions = [".c", ".cpp"];
+enum string[] C_HL_extensions = [".c", ".cpp"];
 enum string[] C_HL_keywords = [
   /* A few C / C++ keywords */
   "switch","if","while","for","break","continue","return","else",
@@ -220,7 +220,7 @@ enum string[] C_HL_keywords = [
 enum static EditorSyntax[] HLDB = [
   {
     "C/C++",
-    C_HL_extenstions,
+    C_HL_extensions,
     C_HL_keywords,
     "//",
     "/*",
