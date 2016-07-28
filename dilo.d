@@ -1,3 +1,66 @@
+/*
+ *      Dilo - A minimal text editor in D Language, ported from Kilo.
+ *
+ *                    A tiny text editor - Dilo
+ *
+ *  Dilo is A minimal text Editor in D Language, ported from Kilo.
+ * As original Kilo, currently, doesn't depend on libcurses.
+ * Current version of Dilo is meraly ported, but I'll imporove.
+ *
+ * Features:
+ *  - Text Editing
+ *  - Syntax Highlight (this version supports C/C++ only, but you can add others language)
+ *  - Incremental Search
+ *
+ * Implementation/improving plans:
+ *  - Separate codes to some files, for this program is distributed as single-file
+ *  - Support syntax highlight definition with external file.
+ *  - Support sinippets/completion
+ *
+ *
+ * Most of original comments are kept, but some of them are saved.
+ * I'll write alternative comments to make up it.
+ *
+ * Copyright (C) 2016 Akihiro Shoji <alpha.kai.net at alpha-kai-net.info>
+ *
+ */
+
+// Original Copyright and disclaimers:
+
+/* Kilo -- A very simple editor in less than 1-kilo lines of code (as counted
+ *         by "cloc"). Does not depend on libcurses, directly emits VT100
+ *         escapes on the terminal.
+ *
+ * -----------------------------------------------------------------------
+ *
+ * Copyright (C) 2016 Salvatore Sanfilippo <antirez at gmail dot com>
+ *
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ *  *  Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *
+ *  *  Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
+ *     documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 enum DILO_VERSION = "0.0.1";
 
 import core.sys.posix.sys.types,
@@ -16,13 +79,12 @@ import std.algorithm,
        std.format,
        std.string,
        std.array,
-       std.range,
-       std.regex,
        std.stdio,
        std.conv,
        std.file,
        std.path;
 
+/* Memory Management Utilities */
 T malloc(T)(size_t size, uint flags = 0u) {
   return cast(T)GC.malloc(size, flags);
 }
@@ -32,7 +94,8 @@ T realloc(T)(T ptr, size_t size) {
 }
 
 version (OSX) {
-  //Special code for OS X.
+  // Special code for OS X.
+  // Currently, core.sys.posix.sys.termios doesn't contain constant `TIOCGWINSZ` for OSX.
   enum TIOCGWINSZ = 0x40087468;
 }
 
@@ -604,14 +667,13 @@ void editorDelRow(ulong at) {
   if (at >= E.numrows) return;
   row = E.row+at;
   editorFreeRow(row);
-  memmove(E.row+at, E.row+at+1, ElementType!(typeof(E.row)).sizeof *(E.numrows-at-1));
+  memmove(E.row+at, E.row+at+1, (E.row[0]).sizeof *(E.numrows-at-1));
 
   for (ulong j = at; j < E.numrows-1; j++) E.row[j].idx++;
   E.numrows--;
   E.dirty = true;
 }
 
-/*
 string editorRowsToString() {
   string buf;
 
@@ -619,30 +681,10 @@ string editorRowsToString() {
     foreach (s; E.row[j].chars[0..E.row[j].size]) {
       buf ~= s;
     }
+
     buf ~= "\n";
   }
 
-  return buf;
-}*/
-char *editorRowsToString(int *buflen) {
-  char* buf, p;
-  int totlen = 0;
-  int j;
-
-  /* Compute count of bytes */
-  for (; j < E.numrows; j++)
-    totlen += E.row[j].size+1; /* +1 is for "\n" at end of every row */
-  *buflen = totlen;
-  totlen++; /* Also make space for nulterm */
-
-  p = buf = malloc!(char*)(totlen);
-  for (j = 0; j < E.numrows; j++) {
-    memcpy(p,E.row[j].chars,E.row[j].size);
-    p += E.row[j].size;
-    *p = '\n';
-    p++;
-  }
-  *p = '\0';
   return buf;
 }
 
@@ -663,7 +705,7 @@ void editorRowInsertChar(Erow* row, ulong at, int c) {
      * char plus the (already existing) null term. */
     row.chars = realloc(row.chars, row.size + 2);
     memmove(row.chars + at + 1, row.chars + at, row.size - at + 1);
-//    row.chars[row.size + 1] = '\0';
+
     row.size++;
   }
 
@@ -686,7 +728,6 @@ void editorRowAppendString(Erow* row, string s) {
 void editorRowDelChar(Erow* row, ulong at) {
   if (row.size <= at) return;
   memmove(row.chars + at, row.chars + at + 1, row.size - at);
-  
   editorUpdateRow(row);
   row.size--;
   E.dirty = true;
@@ -810,13 +851,12 @@ int editorOpen(string filename) {
 /* Save the current file on disk. Return 0 on success, 1 on error. */
 int editorSave() {
   int len;
-  //string buf = editorRowsToString();
-  char* buf = editorRowsToString(&len);
+  string buf = editorRowsToString();
   auto file = File(E.filename, "w");
 
   file.write(buf);
 
-  editorSetStatusMessage("%d bytes written on disk", buf.fromStringz.length);
+  editorSetStatusMessage("%d bytes written on disk", buf.length);
 
   E.dirty = false;
 
@@ -1035,14 +1075,6 @@ void editorFind(int fd) {
         current += find_next;
         if (current == -1) current = E.numrows-1;
         else if (current == E.numrows) current = 0;
-        /*
-           long idx = E.row[current].render.to!string.indexOf(query.to!string);
-           if (idx != -1) {
-           match = &E.row[current].render[idx];
-
-           match_offset = match-E.row[current].render;
-           break;
-           }*/
         import core.stdc.string;
         match = strstr(E.row[current].render, query.ptr);
         if (match) {
@@ -1254,6 +1286,7 @@ static void initEditor() {
     perror("Unable to query the screen for size (columns / rows)");
     exit(1);
   }
+
   E.screenrows -= 2; /* Get room for status bar. */
 }
 
