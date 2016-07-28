@@ -25,7 +25,7 @@
  *
  */
 
-// Original Copyright and disclaimers:
+// Original Kilo's copyright and disclaimers:
 
 /* Kilo -- A very simple editor in less than 1-kilo lines of code (as counted
  *         by "cloc"). Does not depend on libcurses, directly emits VT100
