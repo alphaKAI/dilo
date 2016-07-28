@@ -112,8 +112,8 @@ enum HL {
   MATCH /* Search match. */
 }
 
-enum HL_HIGHLUGHT_STRINGS = 1<<0,
-     HL_HIGHLUGHT_NUMBERS = 1<<1;
+enum HL_HIGHLIGHT_STRINGS = 1<<0,
+     HL_HIGHLIGHT_NUMBERS = 1<<1;
 
 enum USE_SPACE_INSTADE_OF_TAB = true;
 enum TAB_SPACE_SIZE           = 2;
@@ -207,13 +207,23 @@ enum KEY_ACTION {
  */
 
 enum string[] C_HL_extensions = [".c", ".cpp"];
-enum string[] C_HL_keywords = [
+enum string[] C_HL_keywords   = [
   /* A few C / C++ keywords */
-  "switch","if","while","for","break","continue","return","else",
-  "struct","union","typedef","static","enum","class",
+  "switch", "if", "while", "for", "break", "continue", "return", "else",
+  "struct", "union", "typedef", "static", "enum", "class",
   /* C types */
   "int|","long|","double|","float|","char|","unsigned|","signed|",
   "void|"
+];
+
+enum string[] D_HL_extensions = [".d"];
+enum string[] D_HL_keywords   = [
+  "switch", "if", "while", "for", "break", "continue", "return", "else",
+  "struct", "union", "class", "static", "enum", "alias", "mixin", "template",
+  "final", "do", "foreach", "scope", "in", "body", "out", "const", "immutable",
+  "delegate", "function", "version", "is", "typeof", "typeid", "with", "import",
+  "byte|", "ubyte|", "short|", "ushort|", "int|", "uint|", "long|", "ulong|",
+  "string|", "wstring|", "dstring|", "char|", "wchar|", "dchar|", "float|", "double|", "real|", "void|"
 ];
 
 /* Here we define an array of syntax highlights by extensions, keywords, comments delimiters and flags */
@@ -225,7 +235,16 @@ enum static EditorSyntax[] HLDB = [
     "//",
     "/*",
     "*/",
-    HL_HIGHLUGHT_STRINGS | HL_HIGHLUGHT_NUMBERS
+    HL_HIGHLIGHT_STRINGS | HL_HIGHLIGHT_NUMBERS
+  },
+  {
+    "D",
+    D_HL_extensions,
+    D_HL_keywords,
+    "//",
+    "/*",
+    "*/",
+    HL_HIGHLIGHT_STRINGS | HL_HIGHLIGHT_NUMBERS
   }
 ];
 
