@@ -464,7 +464,9 @@ void editorUpdateSyntax(Erow* row) {
   row.hl = realloc(row.hl, row.rsize);
   memset(row.hl, HL.NORMAL, row.rsize);
 
-  if (E.syntax is null) return; /* No syntax, eveything is HL.NORMAL */
+  if (E.syntax is null) {
+    return; /* No syntax, eveything is HL.NORMAL */
+  }
 
   ulong    i;
   char*    p;
@@ -481,7 +483,8 @@ void editorUpdateSyntax(Erow* row) {
     i++;
   }
 
-  prev_sep   = true;  /* Tell the parse if 'i' points to start of word */
+  prev_sep = true;  /* Tell the parse if 'i' points to start of word */
+
   char string_char;   /* This variable represents kind of the string type: "" or '' if in a string. */
 
   /* If the previous line has an open comment, this line starts with an open comment state. */
@@ -503,10 +506,10 @@ void editorUpdateSyntax(Erow* row) {
 
         if (*p == mce[0] && *(p + 1) == mce[1]) {
           row.hl[i + 1] = HL.MLCOMMENT;
+          in_comment    = false;
+          prev_sep      = true;
           p += 2;
           i += 2;
-          in_comment = false;
-          prev_sep   = true;
           continue;
         } else {
           prev_sep = false;
@@ -517,10 +520,10 @@ void editorUpdateSyntax(Erow* row) {
       } else if (*p == mcs[0] && *(p + 1) == mcs[1]) {
         row.hl[i]     = HL.MLCOMMENT;
         row.hl[i + 1] = HL.MLCOMMENT;
+        in_comment    = true;
+        prev_sep      = false;
         p += 2;
         i += 2;
-        in_comment = true;
-        prev_sep   = false;
         continue;
       }
     }
@@ -532,24 +535,28 @@ void editorUpdateSyntax(Erow* row) {
 
         if (*p == '\\') {
           row.hl[i + 1] = HL.STRING;
+          prev_sep      = false;
           p += 2;
           i += 2;
-          prev_sep = false;
           continue;
         }
 
-        if (*p == string_char) in_string = false;
+        if (*p == string_char) {
+          in_string = false;
+        }
+
         p++;
         i++;
+
         continue;
       } else {
         if (*p == '"' || *p == '\'') {
           string_char = *p;
           in_string   = true;
-          row.hl[i] = HL.STRING;
+          row.hl[i]   = HL.STRING;
+          prev_sep    = false;
           p++;
           i++;
-          prev_sep = false;
           continue;
         }
       }
@@ -610,7 +617,8 @@ void editorUpdateSyntax(Erow* row) {
   }
 
   /* Propagate syntax change to the next row if the open comment state changed.
-   * This my recursively affect all the following rows in the file. */
+   * This my recursively affect all the following rows in the file.
+   */
   bool oc = editorRowHasOpenComment(row);
 
   if (row.hl_oc != oc && (row.idx + 1) < E.numrows) {
@@ -658,7 +666,8 @@ void editorUpdateRow(Erow* row) {
         idx;
 
   /* Create a version of the row we can directly print on the screen,
-   * respecting tabs, substituting non printable characters with '?'. */
+   * respecting tabs, substituting non printable characters with '?'.
+   */
   GC.free(row.render);
 
   static if (!USE_SPACE_INSTADE_OF_TAB) {
@@ -687,7 +696,7 @@ void editorUpdateRow(Erow* row) {
     }
   }
 
-  row.rsize = idx;
+  row.rsize       = idx;
   row.render[idx] = '\0';
 
   /* Update the syntax highlighting attributes of the row. */
@@ -769,11 +778,13 @@ string editorRowsToString() {
 }
 
 /* Insert a character at the specified position in a row, moving the remaining
- * chars on the right if needed. */
+ * chars on the right if needed.
+ */
 void editorRowInsertChar(Erow* row, ulong at, int c) {
   if (at > row.size) {
     /* Pad the string with spaces if the insert location is outside the
-     * current length by more than a single character. */
+     * current length by more than a single character.
+     */
     ulong padlen = at-row.size;
     /* In the next line +2 means: new char and null term. */
     row.chars = realloc(row.chars, row.size + padlen + 2);
@@ -782,7 +793,8 @@ void editorRowInsertChar(Erow* row, ulong at, int c) {
     row.size += padlen+1;
   } else {
     /* If we are in the middle of the string just make space for 1 new
-     * char plus the (already existing) null term. */
+     * char plus the (already existing) null term.
+     */
     row.chars = realloc(row.chars, row.size + 2);
     memmove(row.chars + at + 1, row.chars + at, row.size - at + 1);
 
@@ -824,7 +836,8 @@ void editorInsertChar(int c) {
   Erow* row = (filerow >= E.numrows) ? null : &E.row[filerow];
 
   /* If the row where the cursor is currently located does not exist in our
-   * logical representaion of the file, add enough empty rows as needed. */
+   * logical representaion of the file, add enough empty rows as needed.
+   */
   if (!row) {
     while (E.numrows <= filerow) {
       editorInsertRow(E.numrows, "");
@@ -844,7 +857,8 @@ void editorInsertChar(int c) {
 }
 
 /* Inserting a newline is slightly complex as we have to handle inserting a
- * newline in the middle of a line, splitting the line as needed. */
+ * newline in the middle of a line, splitting the line as needed.
+ */
 void editorInsertNewline() {
   ulong filerow = E.rowoff+E.cy;
   ulong filecol = E.coloff+E.cx;
@@ -855,11 +869,13 @@ void editorInsertNewline() {
       editorInsertRow(filerow, "");
       goto fixcursor;
     }
+
     return;
   }
 
   /* If the cursor is over the current line size, we want to conceptually
-   * think it's just over the last character. */
+   * think it's just over the last character.
+   */
   if (filecol >= row.size) {
     filecol = row.size;
   }
@@ -891,42 +907,53 @@ fixcursor:
 void editorDelChar() {
   ulong filerow = E.rowoff + E.cy;
   ulong filecol = E.coloff + E.cx;
-  Erow* row = (filerow >= E.numrows) ? null : &E.row[filerow];
+  Erow* row     = (filerow >= E.numrows) ? null : &E.row[filerow];
 
-  if (!row || (filecol == 0 && filerow == 0)) return;
+  if (!row || (filecol == 0 && filerow == 0)) {
+    return;
+  }
+
   if (filecol == 0) {
     /* Handle the case of column 0, we need to move the current line
-     * on the right of the previous one. */
-    filecol = E.row[filerow-1].size;
-    editorRowAppendString(&E.row[filerow-1], row.chars[0..row.size].to!string);
+     * on the right of the previous one.
+     */
+    filecol = E.row[filerow - 1].size;
+    editorRowAppendString(&E.row[filerow - 1], row.chars[0..row.size].to!string);
     editorDelRow(filerow);
     row = null;
-    if (E.cy == 0)
+
+    if (E.cy == 0) {
       E.rowoff--;
-    else
+    } else {
       E.cy--;
+    }
+
     E.cx = filecol;
+    
     if (E.cx >= E.screencols) {
-      ulong shift = (E.screencols-E.cx)+1;
-      E.cx     -= shift;
-      E.coloff += shift;
+      ulong shift = (E.screencols - E.cx) + 1;
+      E.cx       -= shift;
+      E.coloff   += shift;
     }
   } else {
-    editorRowDelChar(row, filecol-1);
-    if (E.cx == 0 && E.coloff)
+    editorRowDelChar(row, filecol - 1);
+
+    if (E.cx == 0 && E.coloff) {
       E.coloff--;
-    else
+    } else {
       E.cx--;
+    }
   }
   if (row) editorUpdateRow(row);
   E.dirty = true;
 }
 
 /* Load the specified program in the editor memory and returns 0 on success
- * or 1 on error. */
+ * or 1 on error.
+ */
+// Need fixing: this implementation doesn't support horizontal overflow(causes SEGV)
 int editorOpen(string filename) {
-  E.dirty = false;
-
+  E.dirty    = false;
   E.filename = filename.dup;
 
   if (!exists(filename)) {
@@ -934,6 +961,7 @@ int editorOpen(string filename) {
   }
 
   auto file = File(filename, "r");
+
   foreach (line; file.byLine) {
     editorInsertRow(E.numrows, line.to!string);
   }
@@ -946,8 +974,8 @@ int editorOpen(string filename) {
 /* Save the current file on disk. Return 0 on success, 1 on error. */
 int editorSave() {
   int    len;
-  string buf = editorRowsToString();
-  auto  file = File(E.filename, "w");
+  string buf  = editorRowsToString();
+  auto   file = File(E.filename, "w");
 
   file.write(buf);
 
@@ -961,7 +989,8 @@ int editorSave() {
 /* Terminal Update */
 
 /* This function writes the whole screen using VT100 escape characters
- * starting from the logical state of the editor in the global state 'E'. */
+ * starting from the logical state of the editor in the global state 'E'.
+ */
 void editorRefreshScreen() {
   ulong  y;
   Erow*  r;
@@ -969,6 +998,7 @@ void editorRefreshScreen() {
 
   str ~= "\x1b[?25l"; /* Hide cursor. */
   str ~= "\x1b[H";    /* Go home. */
+
   for (; y < E.screenrows; y++) {
     ulong filerow = E.rowoff + y;
 
@@ -978,7 +1008,7 @@ void editorRefreshScreen() {
         
         formattedWrite(welcome, "Dilo editor -- verison %s\x1b[0K\r\n", DILO_VERSION);
 
-        ulong padding = (E.screencols-welcome.data.length) / 2;
+        ulong padding = (E.screencols - welcome.data.length) / 2;
 
         if (padding) {
           str ~= "~";
@@ -995,7 +1025,7 @@ void editorRefreshScreen() {
       }
       continue;
     }
-  
+
     r = &E.row[filerow];
 
     ulong len           = r.rsize - E.coloff;
@@ -1007,8 +1037,8 @@ void editorRefreshScreen() {
       }
 
       char*  c  = r.render + E.coloff;
-      ubyte* hl = r.hl+E.coloff;
-      
+      ubyte* hl = r.hl + E.coloff;
+
       for (ulong j; j < len; j++) {
         if (hl[j] == HL.NONPRINT) {
           char sym;
@@ -1048,7 +1078,6 @@ void editorRefreshScreen() {
     str ~= "\x1b[0K";
     str ~= "\r\n";
   }
-
 
   /* Create a two rows status. First row: */
   str ~= "\x1b[0K";
@@ -1096,7 +1125,8 @@ void editorRefreshScreen() {
 
   /* Put cursor at its current position. Note that the horizontal position
    * at which the cursor is displayed may be different compared to 'E.cx'
-   * because of TABs. */
+   * because of TABs.
+   */
   ulong j;
   ulong cx      = 1;
   ulong filerow = E.rowoff + E.cy;
@@ -1120,7 +1150,8 @@ void editorRefreshScreen() {
 }
 
 /* Set an editor status message for the second line of the status, at the
- * end of the screen. */
+ * end of the screen.
+ */
 void editorSetStatusMessage(FMT, A...)(FMT fmt, A a) if (is(FMT == string)) {
   E.statusmsg = appender!string;  
   formattedWrite(E.statusmsg, fmt, a);
@@ -1132,11 +1163,11 @@ enum DILO_QUERY_LEN = 256;
 
 void editorFind(int fd) {
   char[DILO_QUERY_LEN+1] query = 0;
-  ulong qlen         = 0;
-  long last_match    = -1; /* Last line where a match was found. -1 for none. */
-  long find_next     = 0; /* if 1 search next, if -1 search prev. */
-  long saved_hl_line = -1;  /* No saved HL */
-  char *saved_hl     = null;
+  ulong qlen          = 0;
+  long  last_match    = -1;  /* Last line where a match was found. -1 for none. */
+  long  find_next     = 0;   /* if 1 search next, if -1 search prev. */
+  long  saved_hl_line = -1;  /* No saved HL */
+  char* saved_hl      = null;
 
   enum FIND_RESTORE_HL = q{
     do {
@@ -1153,23 +1184,27 @@ void editorFind(int fd) {
   ulong saved_coloff = E.coloff,
         saved_rowoff = E.rowoff;
 
-  with (KEY_ACTION) while(1) {
+  with (KEY_ACTION) while (1) {
     editorSetStatusMessage("Search: %s (Use ESC/Arrows/Enter)", query);
     editorRefreshScreen();
 
     int c = editorReadKey(fd);
+
     if (c == DEL_KEY || c == CTRL_H || c == BACKSPACE) {
       if (qlen != 0) {
         query[--qlen] = '\0';
       }
+
       last_match = -1;
     } else if (c == ESC || c == ENTER) {
       if (c == ESC) {
-        E.cx = saved_cx; E.cy = saved_cy;
+        E.cx     = saved_cx; E.cy = saved_cy;
         E.coloff = saved_coloff; E.rowoff = saved_rowoff;
       }
+
       mixin(FIND_RESTORE_HL);
       editorSetStatusMessage("");
+
       return;
     } else if (c == ARROW_RIGHT || c == ARROW_DOWN) {
       find_next = 1;
@@ -1190,12 +1225,12 @@ void editorFind(int fd) {
 
     if (find_next) {
       char* match;
-      long match_offset;
-      long i,
-           current = last_match;
+      long  match_offset;
+      long  current = last_match;
 
-      for (; i < E.numrows; i++) {
+      for (ulong i; i < E.numrows; i++) {
         current += find_next;
+
         if (current == -1) {
           current = E.numrows - 1;
         } else if (current == E.numrows) {
@@ -1205,6 +1240,7 @@ void editorFind(int fd) {
         // Need replacing with D function
         import core.stdc.string;
         match = strstr(E.row[current].render, query.ptr);
+
         if (match) {
           match_offset = match-E.row[current].render;
           break;
@@ -1219,16 +1255,19 @@ void editorFind(int fd) {
       if (match !is null) {
         Erow* row  = &E.row[current];
         last_match = current;
+
         if (row.hl) {
           saved_hl_line = current;
-          saved_hl = malloc!(char*)(row.rsize);
+          saved_hl      = malloc!(char*)(row.rsize);
           memcpy(saved_hl, row.hl, row.rsize);
           memset(row.hl + match_offset, HL.MATCH, qlen);
         }
-        E.cy = 0;
-        E.cx = match_offset;
+
+        E.cy     = 0;
+        E.cx     = match_offset;
         E.rowoff = current;
         E.coloff = 0;
+
         /* Scroll horizontally as needed. */
         if (E.cx > E.screencols) {
           ulong diff = E.cx - E.screencols;
@@ -1245,8 +1284,8 @@ void editorFind(int fd) {
 void editorMoveCursor(int key) {
   ulong filerow = E.rowoff + E.cy;
   ulong filecol = E.coloff + E.cx;
+  Erow* row     = (filerow >= E.numrows) ? null : &E.row[filerow];
   ulong rowlen;
-  Erow* row = (filerow >= E.numrows) ? null : &E.row[filerow];
 
   with (KEY_ACTION) switch(key) {
     case ARROW_LEFT:
@@ -1257,6 +1296,7 @@ void editorMoveCursor(int key) {
           if (filerow > 0) {
             E.cy--;
             E.cx = E.row[filerow - 1].size;
+
             if (E.cx > E.screencols - 1) {
               E.coloff = E.cx - E.screencols + 1;
               E.cx = E.screencols - 1;
@@ -1323,16 +1363,19 @@ void editorMoveCursor(int key) {
 }
 
 /* Process events arriving from the standard input, which is, the user
- * is typing stuff on the terminal. */
+ * is typing stuff on the terminal.
+ */
 enum DILO_QUIT_TIMES = 3;
+
 void editorProcessKeypress(int fd) {
   /* When the file is modified, requires Ctrl-q to be pressed N times
-   * before actually quitting. */
+   * before actually quitting.
+   */
   static int quit_times = DILO_QUIT_TIMES;
 
   int c = editorReadKey(fd);
 
-  with (KEY_ACTION) switch(c) {
+  with (KEY_ACTION) switch (c) {
     case ENTER:         /* Enter */
       editorInsertNewline();
       break;
@@ -1363,16 +1406,18 @@ void editorProcessKeypress(int fd) {
       break;
     case PAGE_UP:
     case PAGE_DOWN:
-      if (c == PAGE_UP && E.cy != 0)
+      if (c == PAGE_UP && E.cy != 0) {
         E.cy = 0;
-      else if (c == PAGE_DOWN && E.cy != E.screenrows-1)
-        E.cy = E.screenrows-1;
-      
-        ulong times = E.screenrows;
+      } else if (c == PAGE_DOWN && E.cy != E.screenrows - 1) {
+        E.cy = E.screenrows - 1;
+      }
 
-        while(times--) {
-          editorMoveCursor(c == PAGE_UP ? ARROW_UP: ARROW_DOWN);
-        }
+      ulong times = E.screenrows;
+      
+      while(times--) {
+        editorMoveCursor(c == PAGE_UP ? ARROW_UP: ARROW_DOWN);
+      }
+
       break;
     case ARROW_UP:
     case ARROW_DOWN:
@@ -1386,13 +1431,14 @@ void editorProcessKeypress(int fd) {
     case ESC:
       /* Nothing to do for ESC in this mode. */
       break;
-static if (USE_SPACE_INSTADE_OF_TAB) {
     case TAB:
-      for (int j = 0; j < TAB_SPACE_SIZE; j++) {
-        editorInsertChar(' ');
+      static if (USE_SPACE_INSTADE_OF_TAB) {
+        for (int j = 0; j < TAB_SPACE_SIZE; j++) {
+          editorInsertChar(' ');
+        }
       }
+
       break;
-}
     default:
       editorInsertChar(c);
       break;
@@ -1415,6 +1461,7 @@ static void initEditor() {
   E.dirty    = 0;
   E.filename = null;
   E.syntax   = null;
+
   if (getWindowSize(STDIN_FILENO, STDOUT_FILENO, &E.screenrows, &E.screencols) == -1) {
     perror("Unable to query the screen for size (columns / rows)");
     exit(1);
@@ -1434,7 +1481,8 @@ void main(string[] args) {
   editorOpen(args[1]);
   enableRawMode(STDIN_FILENO);
   editorSetStatusMessage("HELP: Ctrl-S = save | Ctrl-Q = quit | Ctrl-F = find");
-  while(1) {
+
+  while (1) {
     editorRefreshScreen();
     editorProcessKeypress(STDIN_FILENO);
   }
