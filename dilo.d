@@ -951,7 +951,6 @@ void editorDelChar() {
 /* Load the specified program in the editor memory and returns 0 on success
  * or 1 on error.
  */
-// Need fixing: this implementation doesn't support horizontal overflow(causes SEGV)
 int editorOpen(string filename) {
   E.dirty    = false;
   E.filename = filename.dup;
