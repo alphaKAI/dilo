@@ -112,9 +112,6 @@ enum HL {
   MATCH /* Search match. */
 }
 
-enum HL_HIGHLIGHT_STRINGS = 1<<0,
-     HL_HIGHLIGHT_NUMBERS = 1<<1;
-
 enum USE_SPACE_INSTADE_OF_TAB = true;
 enum TAB_SPACE_SIZE           = 2;
 
@@ -125,7 +122,6 @@ struct EditorSyntax {
   string   singleline_comment_start,
            multiline_comment_start,
            multiline_comment_end;
-  int      flags;
 }
 
 /* This structure represents a single line of the file we are editing. */
@@ -140,10 +136,6 @@ struct Erow {
   ubyte* hl;     /* Syntax highlight type for each character in render. */
 
   bool    hl_oc;  /* Row had open comment at end in last syntax highlight check. */
-}
-
-struct HLColor {
-  int r, g, b;
 }
 
 struct EditorConfig {
@@ -234,8 +226,7 @@ enum static EditorSyntax[] HLDB = [
     C_HL_keywords,
     "//",
     "/*",
-    "*/",
-    HL_HIGHLIGHT_STRINGS | HL_HIGHLIGHT_NUMBERS
+    "*/"
   },
   {
     "D",
@@ -243,8 +234,7 @@ enum static EditorSyntax[] HLDB = [
     D_HL_keywords,
     "//",
     "/*",
-    "*/",
-    HL_HIGHLIGHT_STRINGS | HL_HIGHLIGHT_NUMBERS
+    "*/"
   }
 ];
 
