@@ -157,6 +157,7 @@ struct EditorConfig {
   Appender!string statusmsg;
   time_t statusmsg_time;
   EditorSyntax* syntax; /* Current syntax highlight, or NULL. */
+  termios orig_termios; /* In order to restore at exit. */
 }
 
 static EditorConfig E;
@@ -242,12 +243,10 @@ enum HLDB_ENTRIES = HLDB.length;
 
 /* Low Level terminal handling */
 
-static termios orig_termios; /* In order to restore at exit. */
-
 void disableRawMode(int fd) {
   /* Don't even check the return value as it's too late. */
   if (E.rawmode) {
-    tcsetattr(fd, TCSAFLUSH, &orig_termios);
+    tcsetattr(fd, TCSAFLUSH, &E.orig_termios);
     E.rawmode = false;
   }
 }
@@ -265,9 +264,9 @@ int enableRawMode(int fd) {
   if (E.rawmode) return 0; /* Already enabled. */
   if (!isatty(STDIN_FILENO)) goto fatal;
   atexit(&editorAtExit);
-  if (tcgetattr(fd, &orig_termios) == -1) goto fatal;
+  if (tcgetattr(fd, &E.orig_termios) == -1) goto fatal;
 
-  raw = orig_termios; /* modify the original mode */
+  raw = E.orig_termios; /* modify the original mode */
   /* input modes: no break, no CT to NL, no parity check, no strip char, no start/stop output control. */
   raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
   /* output modes - disable post processiong */
