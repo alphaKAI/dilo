@@ -86,7 +86,7 @@ import std.algorithm,
 
 /* Memory Management Utilities */
 T malloc(T)(size_t size, uint flags = 0u) {
-  return cast(T)GC.malloc(size, flags);
+  return cast(T)GC.calloc(size, flags);
 }
 
 T realloc(T)(T ptr, size_t size) {
@@ -472,7 +472,7 @@ void editorUpdateSyntax(Erow* row) {
     if (!in_string) {
       /* Handle single-line comments */
       if (prev_sep && *p == scs[0] && *(p + 1) == scs[1]) {
-        memset(row.hl+i, HL.COMMENT, row.size-i);
+        memset(row.hl+i, HL.COMMENT, row.rsize-i);
         return;
       }
 
@@ -698,7 +698,7 @@ void editorDelRow(ulong at) {
   editorFreeRow(row);
   memmove(E.row+at, E.row+at+1, (E.row[0]).sizeof *(E.numrows-at-1));
 
-  for (ulong j = at; j < E.numrows-1; j++) E.row[j].idx++;
+  for (ulong j = at; j < E.numrows-1; j++) E.row[j].idx--;
   E.numrows--;
   E.dirty = true;
 }
