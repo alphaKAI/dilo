@@ -424,15 +424,23 @@ bool is_separator(int c) {
  * that starts at this row or at one before, and does not end at the end 
  * of the row but spawns to the next row. */
 bool editorRowHasOpenComment(Erow* row) {
+  if (E.syntax is null) return false;
+  char mcs1 = E.syntax.multiline_comment_start[0],
+       mcs2 = E.syntax.multiline_comment_start[1];
+
   if (row.hl && row.rsize && row.hl[row.rsize - 1] == HL.MLCOMMENT &&
-      (row.rsize < 2 || (row.render[row.rsize - 2] != '*' ||
-                         row.render[row.rsize - 1] != '/'))) return true;
+      (row.rsize < 2 || (row.render[row.rsize - 2] != mcs2 ||
+                         row.render[row.rsize - 1] != mcs1))) return true;
 
   return false;
 }
 
 /* Set every byte of row.hl (that corresponds to every character in the line)
  * to the right syntax highlight type (HL.* defines). */
+/* Keeping in_comment flag and in_string flag over rows. */
+bool prev_sep,
+     in_string,  /* Are we inside "" or '' ? */
+     in_comment; /* Are we inside multi-line comment? */
 void editorUpdateSyntax(Erow* row) {
   row.hl = realloc(row.hl, row.rsize);
   memset(row.hl, HL.NORMAL, row.rsize);
@@ -440,7 +448,6 @@ void editorUpdateSyntax(Erow* row) {
   if (E.syntax is null) return; /* No syntax, eveything is HL.NORMAL */
 
   ulong i;
-  bool prev_sep, in_string, in_comment;
   char* p;
   string[] keywords = E.syntax.keywords.dup;
   string scs = E.syntax.singleline_comment_start,
@@ -455,9 +462,7 @@ void editorUpdateSyntax(Erow* row) {
   }
 
   prev_sep   = true;  /* Tell the parse if 'i' points to start of word */
-  in_string  = false; /* Are we inside "" or '' ? */
   char string_char;   /* This variable represents kind of the string type: "" or '' if in a string. */
-  in_comment = false; /* Are we inside multi-line comment? */
 
   /* If the previous line has an open comment, this line starts with an open comment state. */
   if (row.idx > 0 && editorRowHasOpenComment(&E.row[row.idx - 1]))
@@ -479,7 +484,7 @@ void editorUpdateSyntax(Erow* row) {
           p += 2;
           i += 2;
           in_comment = false;
-          prev_sep = true;
+          prev_sep   = true;
           continue;
         } else {
           prev_sep = false;
@@ -667,11 +672,11 @@ void editorInsertRow(ulong at, string s, size_t length = 0) {
   E.row[at].size  = length;
   E.row[at].chars = malloc!(char*)(length + 1);
   memcpy(E.row[at].chars, s.toStringz, length + 1);
-  E.row[at].hl = null;
-  E.row[at].hl_oc = 0;
+  E.row[at].hl     = null;
+  E.row[at].hl_oc  = false;
   E.row[at].render = null;
-  E.row[at].rsize = 0;
-  E.row[at].idx = at;
+  E.row[at].rsize  = 0;
+  E.row[at].idx    = at;
   editorUpdateRow(&E.row[at]);
   E.numrows++;
   E.dirty = true;
