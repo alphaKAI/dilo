@@ -464,62 +464,66 @@ void editorUpdateSyntax(Erow* row) {
     in_comment = true;
 
   while (*p) {
-    /* Handle single-line comments */
-    if (prev_sep && *p == scs[0] && *(p + 1) == scs[1]) {
-      memset(row.hl+i, HL.COMMENT, row.size-i);
-      return;
-    }
+    if (!in_string) {
+      /* Handle single-line comments */
+      if (prev_sep && *p == scs[0] && *(p + 1) == scs[1]) {
+        memset(row.hl+i, HL.COMMENT, row.size-i);
+        return;
+      }
 
-    /* Handle multi-line comments */
-    if (in_comment) {
-      row.hl[i] = HL.MLCOMMENT;
-      if (*p == mce[0] && *(p + 1) == mce[1]) {
+      /* Handle multi-line comments */
+      if (in_comment) {
+        row.hl[i] = HL.MLCOMMENT;
+        if (*p == mce[0] && *(p + 1) == mce[1]) {
+          row.hl[i + 1] = HL.MLCOMMENT;
+          p += 2;
+          i += 2;
+          in_comment = false;
+          prev_sep = true;
+          continue;
+        } else {
+          prev_sep = false;
+          p++;
+          i++;
+          continue;
+        }
+      } else if (*p == mcs[0] && *(p + 1) == mcs[1]) {
+        row.hl[i]     = HL.MLCOMMENT;
         row.hl[i + 1] = HL.MLCOMMENT;
         p += 2;
         i += 2;
-        in_comment = false;
-        prev_sep = true;
-        continue;
-      } else {
-        prev_sep = false;
-        p++;
-        i++;
+        in_comment = true;
+        prev_sep   = false;
         continue;
       }
-    } else if (*p == mcs[0] && *(p + 1) == mcs[1]) {
-      row.hl[i]     = HL.MLCOMMENT;
-      row.hl[i + 1] = HL.MLCOMMENT;
-      p += 2;
-      i += 2;
-      in_comment = true;
-      prev_sep   = false;
-      continue;
     }
 
-    /* Handle "" and '' */
-    if (in_string) {
-      row.hl[i] = HL.STRING;
-      if (*p == '\\') {
-        row.hl[i + 1] = HL.STRING;
-        p += 2;
-        i += 2;
-        prev_sep = false;
-        continue;
-      }
-
-      if (*p == string_char) in_string = false;
-      p++;
-      i++;
-      continue;
-    } else {
-      if (*p == '"' || *p == '\'') {
-        string_char = *p;
-        in_string   = true;
+    if (!in_comment) {
+      /* Handle "" and '' */
+      if (in_string) {
         row.hl[i] = HL.STRING;
+        if (*p == '\\') {
+          row.hl[i + 1] = HL.STRING;
+          p += 2;
+          i += 2;
+          prev_sep = false;
+          continue;
+        }
+
+        if (*p == string_char) in_string = false;
         p++;
         i++;
-        prev_sep = false;
         continue;
+      } else {
+        if (*p == '"' || *p == '\'') {
+          string_char = *p;
+          in_string   = true;
+          row.hl[i] = HL.STRING;
+          p++;
+          i++;
+          prev_sep = false;
+          continue;
+        }
       }
     }
 
