@@ -417,7 +417,7 @@ failed:
 
 /* Syntax highlight color scheme */
 bool is_separator(int c) {
-  return c == '\0' || c == ' ' || ",.()+-/*=~%[];".canFind(c);
+  return c == '\0' || c == ' ' || "{},.()+-/*=~%[];".canFind(c);
 }
 
 /* Return true if the specified row last char is part of multi line comment
