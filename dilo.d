@@ -1391,7 +1391,9 @@ void editorProcessKeypress(int fd) {
         quit_times--;
         return;
       }
+
       exit(0);
+
       break;
     case CTRL_S:        /* Ctrl-s */
       editorSave();
