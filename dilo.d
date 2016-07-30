@@ -1452,7 +1452,7 @@ bool editorFileWasModified() {
   return E.dirty;
 }
 
-static void initEditor() {
+void initEditor() {
   E.cx       = 0;
   E.cy       = 0;
   E.rowoff   = 0;
