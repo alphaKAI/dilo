@@ -574,7 +574,10 @@ void editorUpdateSyntax(Erow* row) {
 
     /* Handle numbers */
     if ((isdigit(*p) && (prev_sep || row.hl[i - 1] == HL.NUMBER)) ||
-        (*p == '.' && i > 0 && row.hl[i - 1] == HL.NUMBER)) {
+        (*p == '.' && i > 0 && row.hl[i - 1] == HL.NUMBER) ||
+        (*p == 'x' && i > 0 && row.hl[i - 1] == HL.NUMBER) ||
+        (*p == '-' && i < row.rsize && (((p+1) !is null) && isdigit(*(p+1))))
+      ) {
       row.hl[i] = HL.NUMBER;
       p++;
       i++;
@@ -629,7 +632,7 @@ void editorUpdateSyntax(Erow* row) {
 }
 
 /* Maps syntax highlight token types to terminal colors.  */
-int editorSyntaxToColor(int hl) {
+int editorSyntaxToColor(HL hl) {
   with (HL) switch (hl) {
     case COMMENT:
     case MLCOMMENT: return 36; /* cyan */
@@ -1059,7 +1062,7 @@ void editorRefreshScreen() {
 
           str ~= c[j];
         } else {
-          int color = editorSyntaxToColor(hl[j]);
+          int color = editorSyntaxToColor(cast(HL)hl[j]);
 
           if (color != current_color) {
             auto buf = appender!string;
@@ -1453,16 +1456,6 @@ bool editorFileWasModified() {
 }
 
 void initEditor() {
-  E.cx       = 0;
-  E.cy       = 0;
-  E.rowoff   = 0;
-  E.coloff   = 0;
-  E.numrows  = 0;
-  E.row      = null;
-  E.dirty    = 0;
-  E.filename = null;
-  E.syntax   = null;
-
   if (getWindowSize(STDIN_FILENO, STDOUT_FILENO, &E.screenrows, &E.screencols) == -1) {
     perror("Unable to query the screen for size (columns / rows)");
     exit(1);
